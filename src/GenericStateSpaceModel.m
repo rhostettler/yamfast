@@ -8,10 +8,9 @@ classdef (Abstract) GenericStateSpaceModel < handle
     %       x(k) = f(x(k-1), q(k-1), t(k))
     %       y(k) = g(x(k), r(k), t(k))
     %
-    %   where q(k) and r(k) are the process- and measurement noises with
-    %   covariance Q and R, respectively, f(.) is the state transition
-    %   function, and g(.) is the observation function. t(k) is the time at
-    %   sampling instant k.
+    %   where q(k) and r(k) are the process- and measurement noises with, 
+    %   respectively, f(.) is the state transition function, and g(.) is 
+    %   the observation function. t(k) is the time at sampling instant k.
     %
     %   Classes implementing this model type need to implement the methods 
     %   'f' and 'g' according to the above definition.
@@ -35,7 +34,6 @@ classdef (Abstract) GenericStateSpaceModel < handle
     %   * This is actually not exactly the most generic case (especially
     %     w.r.t. the noise variables and initialization). I should try to
     %     generalize it even more.
-    %   * Also, Q and R could be time dependent.
     %   * All functions/values could be parameter dependent.
     
     % Properties
@@ -45,10 +43,13 @@ classdef (Abstract) GenericStateSpaceModel < handle
         P0;
         
         % Process noise covariance
-        Q;
+        %Q;
         
         % Measurement noise covariance
-        R;
+        %R;
+        
+        % 
+        t;
     end
 
     % Abstract methods, these need to be implemented by derived classes
