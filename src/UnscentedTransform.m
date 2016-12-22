@@ -1,5 +1,5 @@
 classdef UnscentedTransform < handle
-    % Unscented transform (UT) (and cubature sigma-points)
+    % Unscented transform (UT) (and cubature) sigma-points
     % 
     % DESCRIPTION
     %   Implements the unscented transform (UT) [1] as it is used in, for
@@ -39,7 +39,7 @@ classdef UnscentedTransform < handle
     %       Transactions on Automatic Control, 54(6), 1254?1269, 2009
     %
     % SEE ALSO
-    %
+    %   GaussHermiteCubature
     %
     % VERSION
     %   2016-12-18

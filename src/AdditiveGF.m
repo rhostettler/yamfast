@@ -1,4 +1,4 @@
-classdef AdditiveGF < handle
+classdef AdditiveGF < GaussianFilter
     % Additive Gaussian assumed density filter using sigma-points
     % 
     % DESCRIPTION
@@ -21,20 +21,37 @@ classdef AdditiveGF < handle
     %   an unscented Kalman filter.
     %
     % PROPERTIES
-    %   TODO: Document these.
+    %   Does not provide properties of its own, see the GaussianFilter's
+    %   documentation for inherited properties.
     %
     % METHODS
-    %   TODO: Document these.
+    %   Implements all the function as required (and described) by the
+    %   GaussianFilter-class. See its documentation for details.
     %
-    % REFERENCSE
-    %   [1] S. Särkkä, "Bayesian Filtering and Smoothing", Cambridge
-    %   University Press, 2013
+    %   AdditiveGF(model, rule)
+    %       Constructor to initialize the filter.
+    %
+    %       model (optional)
+    %           State-space model for this filter to operate on. While
+    %           specifying a model is optional, omitting the model is only
+    %           meaningful in cases where this filter is used together with
+    %           an IMM (see IMMFilter). In all other cases, the model must
+    %           be specified.
+    %
+    %       rule (optional)
+    %           Sigma-point method to use. If not specified, the unscented
+    %           transform is used with its default parameters (see
+    %           UnscentedTransform for details), effectively giving an UKF.
+    %   
+    % REFERENCES
+    %   [1] S. S?rkk?, "Bayesian Filtering and Smoothing", Cambridge
+    %       University Press, 2013
     %
     % SEE ALSO
-    %   GenericEKF, GenericGF, UnscentedTransform, GaussHermiteCubature
+    %   GaussianFilter, KalmanFilter, ExtendedKF, GenericGF
     %
     % VERSION
-    %   2016-12-18
+    %   2016-12-22
     % 
     % AUTHORS
     %   Roland Hostettler <roland.hostettler@aalto.fi>   
@@ -43,25 +60,12 @@ classdef AdditiveGF < handle
     
     %% Properties
     properties
-        % The model of the type 'AGModel'
-        model;
-        
-        % Mean and covariance
-        m;
-        P;
-        
-        % Predicted mean and covariance
-        m_p;
-        P_p;
-                 
-        % Stores the residual covariance (needed by IMMUKF)
-        Pyy;
-        v;
+        % No extra properties
     end
     
     %% Private Properties
     properties (Access = private)
-        % Sigma-point integration rule
+        % Sigma-point integration rule, UT by default
         rule = UnscentedTransform();
     end
 
@@ -82,21 +86,9 @@ classdef AdditiveGF < handle
                 self.rule = rule;
             end
         end
-        
-        %% Initialize the Filter
-        function initialize(self)
-            self.m = self.model.m0;
-            self.P = self.model.P0;
-        end
-        
-        %% Update the filter
-        function update(self, y, t, u)
-            self.timeUpdate(t, u);
-            self.measurementUpdate(y, t, u);
-        end
-        
-        %% Time update function
-        function timeUpdate(self, t, u)
+                
+        %% Time Update
+        function [m_p, P_p]  = timeUpdate(self, t, u)
             % Augment the state and covariance
             m = self.m;
             P = self.P;
@@ -113,17 +105,20 @@ classdef AdditiveGF < handle
             end
                 
             % Predict the mean & covariance
-            self.m_p = X_p*wm';
+            m_p = X_p*wm';
             P_p = zeros(Nx);
             for j = 1:J
                 P_p = P_p + wc(j)*(X_p(:, j)-self.m_p)*(X_p(:, j)-self.m_p)';
             end
             P_p = P_p + Q;
-            self.P_p = (P_p + P_p')/2;
+            P_p = (P_p + P_p')/2;
+            
+            self.m_p = m_p;
+            self.P_p = P_p;
         end
         
-        %% Measurement update function
-        function measurementUpdate(self, y, t, u)
+        %% Measurement Update
+        function [m, P] = measurementUpdate(self, y, t, u)
             % Augment the predicted state and measurement covariance
             m_p = self.m_p;
             P_p = self.P_p;
@@ -154,13 +149,14 @@ classdef AdditiveGF < handle
 
             % Correction
             K = Pxy/Pyy;
-            self.m = self.m_p + K*(y-y_p);
+            m = self.m_p + K*(y-y_p);
             Lyy = chol(Pyy, 'lower');
             P = self.P_p - (K*Lyy)*(K*Lyy)';
 %             P = self.P_p - K*Pyy*K';
+            P = (P + P')/2;
 
-            % Ensure P is Hermitian
-            self.P = (P + P')/2;
+            self.m = m;
+            self.P = P;
             self.Pyy = Pyy;
             self.v = y-y_p;
         end

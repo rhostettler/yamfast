@@ -22,8 +22,8 @@ classdef GaussHermiteCubature < handle
     %       Gauss-Hermite cubatures.
     %
     % REFERENCES
-    %   [1] S. Särkkä, "Bayesian Filtering and Smoothing", Cambridge
-    %   University Press, 2013
+    %   [1] S. S?rkk?, "Bayesian Filtering and Smoothing", Cambridge
+    %       University Press, 2013
     %
     % SEE ALSO
     %   UnscentedTransform
@@ -104,7 +104,7 @@ classdef GaussHermiteCubature < handle
             % the 1xp^N weight vector. The matrix has the following form:
             %        _                                                                 _
             %       | xi(1) xi(1) ... xi(1) xi(2) xi(2) ... xi(2) xi(p) xi(p) ... xi(p) |
-            %       | xi(1) xi(1)     xi(p) xi(1) xi(1) ... xi(p) xi(1) xi(1) ... xi(p) |
+            %       | xi(1) xi(1)     xi(p) xi(1) xi(1) ... xi(p) xi(1) xi(1) ... xi(p) |
             %  Xi = | ...   ...       ...   ...   ...       ...   ...   ...      ...    |
             %       |_xi(1) xi(2) ... xi(p) xi(1) xi(2) ... xi(p) xi(1) xi(2) ... xi(p)_|
             %
