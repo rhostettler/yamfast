@@ -68,7 +68,7 @@ classdef AWGNModel < GenericModel
     end
 
     %% Protected Properties
-    properties (Access = protected)
+    properties (Access = private)
         m_f;
         m_Fx;
         m_Q;
@@ -120,6 +120,13 @@ classdef AWGNModel < GenericModel
             Q = self.Q(x, t, u);
             q = chol(Q).'*randn(size(Q, 1), size(x, 2));
             xp = self.f(x, q, t, u);
+        end
+        
+        %% Evaluate the State Transition Density
+        function px = px_eval(self, xp, x, t, u)
+            Q = self.Q(x, t, u);
+            f = self.f(x, t, zeros(size(Q, 1), size(x, 2)), u);
+            px = mvnpdf(xp.', f.', Q).';
         end
         
         %% Default Measurement Function

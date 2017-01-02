@@ -58,7 +58,7 @@ classdef GenericGF < GaussianFilter
     end
     
     %% Private Properties
-    properties (Access = private)
+    properties (Access = protected)
         % Sigma-point integration rule, UT by default
         rule = UnscentedTransform();
     end

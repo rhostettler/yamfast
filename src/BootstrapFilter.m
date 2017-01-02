@@ -6,8 +6,8 @@ classdef BootstrapFilter < handle
     %   filtering distribution p(x_{1:t} | y_{1:t}) for state-space models 
     %   of the type
     %
-    %       x[t] ~ p(x[t] | x[t-1])
-    %       y[t] ~ p(y[t] | x[t])
+    %       x[n] ~ p(x[n] | x[n-1])
+    %       y[n] ~ p(y[n] | x[n])
     %
     %   The filter uses effective sample size-based resampling by default
     %   with a default threshold of M/3 as well as systematic resampling.
@@ -22,7 +22,7 @@ classdef BootstrapFilter < handle
     %
     %   Mt  Resampling threshold.
     %
-    %   xhat, xmap, C
+    %   xhat, xmap, P
     %       Posterior mean, mode, and covariance at time t.
     %
     % METHODS
@@ -30,7 +30,7 @@ classdef BootstrapFilter < handle
     %       Initialize the bootstrap filter with M particles for the given
     %       model.
     %
-    %   update(y, t, u)
+    %   [xhat, P] = update(y, t, u)
     %       Do a complete update with measurement y, time t, and control
     %       input u.
     %
@@ -38,7 +38,7 @@ classdef BootstrapFilter < handle
     %   GenericModel
     %
     % VERSION
-    %   2016-10-19
+    %   2017-01-02
     % 
     % AUTHORS
     %   Roland Hostettler <roland.hostettler@aalto.fi>   
@@ -50,8 +50,9 @@ classdef BootstrapFilter < handle
     %   * Add input check function
     %   * Add possibility for fast propagation and evaluation
     %   * Add diagnostics (particle degeneracy, etc)
+    %   * Store (and resample) whole particle trajectories
     
-    % Disable some warnings
+    % Supress mlint warnings
     %#ok<*PROPLC>
     
     %% Properties
@@ -69,7 +70,7 @@ classdef BootstrapFilter < handle
         % Posterior mean and mode and covariance
         xhat;
         xmap;
-        C;
+        P;
     end
 
     %% Methods
@@ -83,7 +84,7 @@ classdef BootstrapFilter < handle
         end
         
         %% Filter Update
-        function update(self, y, t, u)
+        function [xhat, P]  = update(self, y, t, u)
             model = self.model;
             w = self.w;
             x = self.x;
@@ -98,9 +99,9 @@ classdef BootstrapFilter < handle
             
             % Estimate
             xhat = x*w';
-            C = 0;
+            P = 0;
             for m = 1:M
-                C = C + w(m)*((x(:, m) - xhat)*(x(:, m) - xhat)');
+                P = P + w(m)*((x(:, m) - xhat)*(x(:, m) - xhat)');
             end
             [~, imap] = max(w);
             self.xmap = x(:, imap);
@@ -117,7 +118,7 @@ classdef BootstrapFilter < handle
             self.x = x;
             self.w = w;
             self.xhat = xhat;
-            self.C = C;
+            self.C = P;
         end
     end
     
@@ -137,6 +138,7 @@ classdef BootstrapFilter < handle
                 end
                 u = u + Ns/M - w(j);
             end
+            ri = ri(randperm(M));
         end
     end
 end

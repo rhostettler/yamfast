@@ -73,15 +73,10 @@ classdef AdditiveGF < GaussianFilter
     methods (Access = public)
         %% Constructor
         function self = AdditiveGF(model, rule)
-            % Subclasses might not provide a model (e.g. the UKFIMM) as
-            % they manage the model themselves. Hence, we have to check if
-            % the model was passed or not.
             if nargin >= 1 && ~isempty(model)
-                % Store the model
                 self.model = model;
                 self.initialize();
             end
-            
             if nargin >= 2 && ~isempty(rule)
                 self.rule = rule;
             end

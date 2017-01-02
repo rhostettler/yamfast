@@ -1,27 +1,25 @@
 classdef (Abstract) GenericModel < handle
-    % Model Interface for generic state space models
+    % Model interface for generic state space models
     % 
     % DESCRIPTION
     %   This (abstract) class defines the interface for generic state-space
     %   models of the form
     %
-    %       x[k] = f(x[k-1], q[k], t[k], u[k])
-    %       y[k] = g(x[k], r[k], t[k], u[k])
+    %       x[n] = f(x[n-1], q[n], t[n], u[n])
+    %       y[n] = g(x[n], r[n], t[n], u[n])
     %
-    %   where q[k] and r[k] are the process- and measurement noises, 
+    %   where q[n] and r[n] are the process- and measurement noises, 
     %   respectively, f(.) is the state transition function, and g(.) is 
-    %   the observation function. t[k] is the time at sampling instant k
-    %   and u[k] is a possible deterministic control input.
+    %   the observation function. t[n] is the time at sampling instant n
+    %   and u[n] is a possible deterministic control input.
     %
+    %   This class defines the most basic interface for such models.
     %   Classes implementing this model type need to implement the
-    %   following methods listed in the section 'ABSTRACT METHODS'.
-    %
-    %   []
-    %
-    %   'f' and 'g' according to the above definition.
+    %   methods listed in the section 'ABSTRACT METHODS' below.
     %
     % PROPERTIES
-    %   t   The time of the last update.
+    %   t (r/w)
+    %       The time of the last update.
     %
     % ABSTRACT METHODS
     %   x0 = px0_rand(M)
@@ -37,6 +35,9 @@ classdef (Abstract) GenericModel < handle
     %       Function to generate random states from the state transition
     %       density p(x[k] | x[k-1]).
     %
+    %   px = px_eval(xp, x, t, u)
+    %       Function to evaluate the state transition density.
+    %
     %   [yp, Gx, Gr] = g(x, r, t, u)
     %       Measurement function where yp is the predicted measurement and
     %       Gx and Gr are the Jacobians of g(.) with respect to x and r,
@@ -46,26 +47,30 @@ classdef (Abstract) GenericModel < handle
     %       Measurement likelihood.
     %
     % SEE ALSO
-    %   LGSSModel, MixedLNGModel
+    %   AWGNModel, LGSSModel, MixedCLGSSModel
     %
     % VERSION
-    %   2016-10-19
+    %   2017-01-02
     % 
     % AUTHORS
     %   Roland Hostettler <roland.hostettler@aalto.fi>  
         
     %% Properties
     properties
-        t;                      % Model time
+        % Time of the last update for time-dependent models. This needs to 
+        % be stored by the main application after each simulation/filter
+        % update.
+        t = 0;
     end
 
     %% Abstract Methods
     % These need to be implemented by child-classes
     methods (Abstract)
-        px0_rand(M);            % Initial state generator
-        f(self, x, q, t, u);    % State Dynamics
-        px_rand(x, t, u);       % State transition generator
-        g(self, x, r, t, u);    % Measurement function
-        py_eval(x, t, u);       % Measurement likelihood
+        px0_rand(self, M);            % Initial state generator
+        f(self, x, q, t, u);          % State Dynamics
+        px_rand(self, x, t, u);       % State transition generator
+        px_eval(self, xp, x, t, u);   % State transition evaluation
+        g(self, x, r, t, u);          % Measurement function
+        py_eval(self, y, x, t, u);    % Measurement likelihood
     end
 end

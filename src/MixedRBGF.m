@@ -1,48 +1,52 @@
-classdef RBGF < handle
-    % Rao-Blackwellized Gaussian filter
+classdef MixedRBGF < GaussianFilter
+    % Rao-Blackwellized Gaussian filter for mixed linear/non-linear
+    % Gaussian state-space models
     % 
     % DESCRIPTION
-    %   Rao-Blackwellized Gaussian filter for conditionally linear Gaussian
-    %   state space systems.
+    %   Rao-Blackwellized Gaussian filter for mixed linear/non-linear
+    %   Gaussian state space systems of the form
+    %
+    %       xn[n] = fn(xn[n-1], u[n], t[n])
+    %                   + An(xn[n-1], u[n], t[n]) xl[n-1] + qn[n]
+    %       xl[n] = fl(xn[n-1], u[n], t[n])
+    %                   + Al(xn[n-1], u[n], t[n]) xl[n-1] + ql[n]
+    %       y[n] = h(xn[n], u[n], t[n]) + C(xn[n], u[n], t[n]) xl[n-1] 
+    %                   + r[n]
+    %
+    %   with Gaussian initial states.
     %
     % PROPERTIES
-    % 
+    %   Inherits all the properties of GaussianFilter and defines the
+    %   following additional properties:
+    %
+    %   Ni (r/w, default: 1)
+    %       Number of measurement update iterations (1 = traditional
+    %       filtering, posterior linearization with Ni iterations if > 1).
     %
     % METHODS
-    %   update(y, t, u)
+    %   Implements the update-methods as required by GaussianFilter.
     %
     % REFERENCES
-    %   [1] R. Hostettler and S. Särkkä, "Rao-Blackwellized Gaussian
+    %   [1] R. Hostettler and S. S??rkk??, "Rao-Blackwellized Gaussian
     %       Filtering and Smoothing", 2017.
     %
     % SEE ALSO
-    %
+    %   MixedCLGSSModel
     %
     % VERSION
-    %   2016-12-18
+    %   2017-01-02
     % 
     % AUTHORS
     %   Roland Hostettler <roland.hostettler@aalto.fi>   
     
     % TODO
-    %   * Generalize to a general Gaussian filter
     %   * Implement alias properties for mn, ml, Pn, etc.
-    %   * Implement for hierarchical model
     
+    % Suppress mlint warnings
     %#ok<*PROPLC>
     
     %% Properties
     properties (Access = public)
-        model = [];
-        
-        % State estimate and covariance
-        m;
-        P;
-        
-        % Predicted state and covaraince
-        m_p;
-        P_p;
-        
         % Number of measurement update iterations (= posterior
         % linearization approximation if not equal to 1)
         Ni = 1;
@@ -53,18 +57,10 @@ classdef RBGF < handle
         rule = UnscentedTransform();
     end
     
-    %% Property Setter/Getter Methods
-    methods
-        function model.set(self, model)
-            self.model = model;
-            self.initialize();
-        end
-    end
-    
     %% Public Methods
     methods (Access = public)
         %% Constructor
-        function self = RBGF(model, rule)
+        function self = MixedRBGF(model, rule)
             if nargin >= 1 && ~isempty(model)
                 self.model = model;
                 self.initialize();
@@ -74,20 +70,8 @@ classdef RBGF < handle
             end
         end
         
-        %% Initialization
-        function initialize(self)
-            self.m = self.model.m0;
-            self.P = self.model.P0;
-        end
-        
-        %% Filter Update
-        function update(self, y, t, u)
-            self.timeUpdate(t, u);
-            self.measurementUpdate(y, t, u);
-        end
-        
         %% Time Update (Prediction)
-        function timeUpdate(self, t, u)
+        function [m_p, P_p] = timeUpdate(self, t, u)
             model = self.model;
             in = model.in;
             il = model.il;
@@ -145,7 +129,7 @@ classdef RBGF < handle
         end
         
         %% Measurement Update
-        function measurementUpdate(self, y, t, u)
+        function [m_i, P_i] = measurementUpdate(self, y, t, u)
             m_i = self.m_p;
             P_i = self.P_p;
             for i = 1:self.Ni

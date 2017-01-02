@@ -87,6 +87,11 @@ classdef (Abstract) GaussianFilter < handle
         v;
         Pyy;
     end
+    
+    %% Protected Properties
+    properties (Access = protected)
+        decorators;
+    end
 
     %% Methods (Prototypes)
     % These are implemented by the actual filters
@@ -100,7 +105,20 @@ classdef (Abstract) GaussianFilter < handle
         %% Update the filter
         function [m, P] = update(self, y, t, u)
             self.timeUpdate(t, u);
-            [m, P] = self.measurementUpdate(y, t, u);
+            for i = 1:length(self.decorators)
+                self.decorators{i}.timeUpdateHook(self);
+            end
+            self.measurementUpdate(y, t, u);
+            for i = 1:length(self.decorators)
+                self.decorators{i}.measurementUpdateHook(self);
+            end
+            m = self.m;
+            P = self.P;
+        end
+        
+        %% Adds a Decorators
+        function addDecorator(self, decorator)
+            self.decorators{length(self.decorators)+1} = decorator;
         end
     end
     
