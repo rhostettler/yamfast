@@ -82,15 +82,21 @@ classdef AWGNModel < GenericModel
         %% Constructor
         % Only used when the 'simple' form of the model is used.
         function self = AWGNModel(f, Fx, Q, g, Gx, R)
-            if nargin < 6
-                error('Model not fully specified, see model documentation.');
+            switch nargin
+                case 0
+                    % nop
+                    
+                case 6
+                    self.m_f = f;
+                    self.m_Fx = Fx;
+                    self.m_Q = Q;
+                    self.m_g = g;
+                    self.m_Gx = Gx;
+                    self.m_R = R;
+                    
+                otherwise
+                    error('Model not fully specified, see model documentation.');
             end
-            self.m_f = f;
-            self.m_Fx = Fx;
-            self.m_Q = Q;
-            self.m_g = g;
-            self.m_Gx = Gx;
-            self.m_R = R;
         end
         
         %% Draw Samples from the Initial Distribution
@@ -144,14 +150,7 @@ classdef AWGNModel < GenericModel
         function R = R(self, x, t, u)
             R = self.m_R;
         end
-        
-        %% Evaluate the State Transition Density
-        function px = px_eval(self, xp, x, t, u)
-            Q = self.Q(x, t, u);
-            q = zeros(size(Q, 1), size(x, 2));
-            px = mvnpdf(xp.', self.f(x, q, t, u).', Q).';
-        end
-        
+                
         %% Evaluate the Likelihood
         function py = py_eval(self, y, x, t, u)
             R = self.R(x, t, u);

@@ -100,7 +100,7 @@ classdef GenericGF < GaussianFilter
             m_p = X_p*wm';
             P_p = zeros(Nx);
             for l = 1:L
-                P_p = P_p + wc(l)*(X_p(:, l)-self.m_p)*(X_p(:, l)-self.m_p)';
+                P_p = P_p + wc(l)*(X_p(:, l)-m_p)*(X_p(:, l)-m_p)';
             end
             P_p = (P_p + P_p')/2;
 %             self.P_p = self.stabilize(P_p);
@@ -124,7 +124,7 @@ classdef GenericGF < GaussianFilter
                 % Calculate and propagate sigma points
                 [X_p, Wm, Wc] = self.rule.calculateSigmaPoints(x_a, P_a);
                 L = size(X_p, 2);
-                Y_p = zeros(Ny, 2*L+1);
+                Y_p = zeros(Ny, L);
                 for l = 1:L
                     Y_p(:, l) = self.model.g(X_p(1:Nx, l), X_p(Nx+1:Nx+Nr, l), t, u);
                 end
@@ -133,7 +133,7 @@ classdef GenericGF < GaussianFilter
                 y_p = Y_p*Wm';
                 Pyy = zeros(Ny);
                 Pxy = zeros(Nx, Ny);
-                for l = 1:2*L+1
+                for l = 1:L
                     Pyy = Pyy + Wc(l)*(Y_p(:, l) - y_p)*(Y_p(:, l) - y_p)';
                     Pxy = Pxy ...
                         + Wc(l)*(X_p(1:Nx, l) - self.m_p)*(Y_p(:, l) - y_p)';
