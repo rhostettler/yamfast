@@ -1,4 +1,4 @@
-classdef KalmanFilter < handle
+classdef KalmanFilter < GaussianFilter
     % A generic Unscented Kalman Filter
     % 
     % DESCRIPTION
@@ -21,52 +21,46 @@ classdef KalmanFilter < handle
     
     % Properties
     properties
-        % The model of the type 'LGSSModel'
-        model;
-        
-        % Mean and covariance
-        m;
-        P;
-        
-        % Predicted mean and covariance
-        m_p;
-        P_p;
     end
 
     % Methods
     methods
         %% Constructor
         function self = KalmanFilter(model)
-            % Store the model
-            self.model = model;
-            
-            % Initialize the filter
-            self.m = model.m0;
-            self.P = model.P0;
+            if nargin == 1
+                self.model = model;
+                self.initialize();
+            end
         end
-        
-        %% Update the filter
-        function update(self, u, y, t)
-            self.timeUpdate(u, t);
-            self.measurementUpdate(u, y, t);
-        end
-        
+                
         %% Time update function
-        function timeUpdate(self, u, t)
-            % Predict the state
-            self.m_p = self.model.F*self.m;
-            self.P_p = self.model.F*self.P*self.model.F' + self.model.Q;
+        function [m_p, P_p] = timeUpdate(self, t, u)
+            m_p = self.model.F(t, u)*self.m;
+            P_p = ( ...
+                self.model.F(t, u)*self.P*self.model.F(t, u)' ...
+                + self.model.Q([], t, u) ...
+            );
+            
+            self.m_p = m_p;
+            self.P_p = P_p;
         end
         
         %% Measurement update function
-        function measurementUpdate(self, u, y, t)
-                % Kalman gain
-                S = self.model.G*self.P_p*self.model.G' + self.model.R;
-                K = (self.P_p*self.model.G')/S;
+        function [m, P] = measurementUpdate(self, y, t, u)
+                m_p = self.m_p;
+                P_p = self.P_p;
+                G = self.model.G(t, u);
                 
-                % Time update
-                self.m = self.m_p + K*(y - self.model.G*self.m_p);
-                self.P = self.P_p - K*S*K';
+                S = G*P_p*G' + self.model.R([], t, u);
+                K = (P_p*G')/S;
+                v = (y - G*m_p);
+                m = m_p + K*v;
+                P = P_p - K*S*K';
+                
+                self.m = m;
+                self.P = P;
+                self.v = v;
+                self.Pyy = S;
         end
     end
 end

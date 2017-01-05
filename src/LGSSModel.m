@@ -65,7 +65,7 @@ classdef LGSSModel < AWGNModel
         end
         
         %% Process Noise Covariance
-        function Q = Q(self, t, u)
+        function Q = Q(self, x, t, u)
             Q = self.get(self.m_Q, t, u);
         end
         
@@ -82,7 +82,7 @@ classdef LGSSModel < AWGNModel
         end
         
         %% Measurement Noise Covariance
-        function R = R(self, t, u)
+        function R = R(self, x, t, u)
             R = self.get(self.m_R, t, u);
         end
         

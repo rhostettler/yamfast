@@ -96,8 +96,8 @@ classdef (Abstract) GaussianFilter < handle
     %% Methods (Prototypes)
     % These are implemented by the actual filters
     methods
-        timeUpdate(t, u);
-        measurementUpdate(y, t, u);
+        timeUpdate(self, t, u);
+        measurementUpdate(self, y, t, u);
     end
     
     %% Methods

@@ -154,7 +154,7 @@ classdef AWGNModel < GenericModel
         %% Evaluate the Likelihood
         function py = py_eval(self, y, x, t, u)
             R = self.R(x, t, u);
-            py = mvnpdf(y.', self.g(x, t, u).', R).';
+            py = mvnpdf(y.', self.g(x, zeros(size(R, 1), size(x, 2)), t, u).', R).';
         end
     end
 end
