@@ -109,7 +109,7 @@ classdef BootstrapFilter < handle
             % Resample
             ess = 1/sum(w.^2);
             if ess < self.Mt
-                ir = resample(w);
+                ir = self.resample(w);
                 x = x(:, ir);
                 w = 1/M*ones(1, M);
             end
@@ -118,7 +118,7 @@ classdef BootstrapFilter < handle
             self.x = x;
             self.w = w;
             self.xhat = xhat;
-            self.C = P;
+            self.P = P;
         end
     end
     
