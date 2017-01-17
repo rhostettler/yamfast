@@ -44,7 +44,7 @@ classdef AdditiveGF < GaussianFilter
     %           UnscentedTransform for details), effectively giving an UKF.
     %   
     % REFERENCES
-    %   [1] S. S?rkk?, "Bayesian Filtering and Smoothing", Cambridge
+    %   [1] S. Särkkä, "Bayesian Filtering and Smoothing", Cambridge
     %       University Press, 2013
     %
     % SEE ALSO
@@ -102,14 +102,17 @@ classdef AdditiveGF < GaussianFilter
             % Predict the mean & covariance
             m_p = X_p*wm';
             P_p = zeros(Nx);
+            C = zeros(Nx, Nx);
             for j = 1:J
-                P_p = P_p + wc(j)*(X_p(:, j)-self.m_p)*(X_p(:, j)-self.m_p)';
+                P_p = P_p + wc(j)*(X_p(:, j)-m_p)*(X_p(:, j)-m_p)';
+                C = C + wc(j)*(X(:, j) - m)*(X_p(:, j) - m_p)';
             end
             P_p = P_p + Q;
             P_p = (P_p + P_p')/2;
             
             self.m_p = m_p;
             self.P_p = P_p;
+            self.C = C;
         end
         
         %% Measurement Update
@@ -132,28 +135,28 @@ classdef AdditiveGF < GaussianFilter
 
             % Predict the measurement and covariance
             y_p = Y_p*wm';
-            Pyy = zeros(Ny);
-            Pxy = zeros(Nx, Ny);
+            S = zeros(Ny);
+            D = zeros(Nx, Ny);
             for j = 1:J
-                Pyy = Pyy + wc(j)*(Y_p(:, j) - y_p)*(Y_p(:, j) - y_p)';
-                Pxy = Pxy ...
-                    + wc(j)*(X_p(1:Nx, j) - self.m_p)*(Y_p(:, j) - y_p)';
+                S = S + wc(j)*(Y_p(:, j) - y_p)*(Y_p(:, j) - y_p)';
+                D = D + wc(j)*(X_p(1:Nx, j) - self.m_p)*(Y_p(:, j) - y_p)';
             end
-            Pyy = Pyy + R;
-            Pyy = (Pyy+Pyy')/2;
+            S = S + R;
+            S = (S+S')/2;
 
             % Correction
-            K = Pxy/Pyy;
+            K = D/S;
             m = self.m_p + K*(y-y_p);
-            Lyy = chol(Pyy, 'lower');
+            Lyy = chol(S, 'lower');
             P = self.P_p - (K*Lyy)*(K*Lyy)';
 %             P = self.P_p - K*Pyy*K';
             P = (P + P')/2;
 
             self.m = m;
             self.P = P;
-            self.Pyy = Pyy;
-            self.v = y-y_p;
+            self.y_p = y_p;
+            self.S = S;
+            self.D = D;
         end
     end
 end

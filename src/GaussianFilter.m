@@ -21,13 +21,15 @@ classdef (Abstract) GaussianFilter < handle
     %   model (r/w)
     %       The model used in this filter.
     %
-    %   m, P (r/w)
-    %       Posterior mean and covariance from the last measurement update.
+    %   m, P, D (r/w)
+    %       Posterior mean, covariance, and cross-covariacne from the last 
+    %       measurement update.
     %
-    %   m_p, P_p (r/w)
-    %       Predicted mean and covariance from the last time update.
+    %   m_p, P_p, C (r/w)
+    %       Predicted mean, covariance, and cross-covariance from the last 
+    %       time update.
     %
-    %   v, Pyy (r/w)
+    %   y_p, S (r/w)
     %       Innovation and innovation covariance.
     %
     % METHODS
@@ -55,8 +57,11 @@ classdef (Abstract) GaussianFilter < handle
     %       t   Time of measurement.
     %       u   Control input.
     %
+    %   initialize()
+    %       (Re-)initializes the filter.
+    %
     % REFERENCES
-    %   [1] S. S?rkk?, "Bayesian Filtering and Smoothing", Cambridge
+    %   [1] S. Särkkä, "Bayesian Filtering and Smoothing", Cambridge
     %       University Press, 2013.
     %
     % SEE ALSO
@@ -78,14 +83,16 @@ classdef (Abstract) GaussianFilter < handle
         % Mean and covariance
         m;
         P;
+        D;
         
         % Predicted mean and covariance
         m_p;
         P_p;
+        C;
         
         % Innovation and innovation covariance
-        v;
-        Pyy;
+        y_p;
+        S;
     end
     
     %% Protected Properties
@@ -120,11 +127,8 @@ classdef (Abstract) GaussianFilter < handle
         function addDecorator(self, decorator)
             self.decorators{length(self.decorators)+1} = decorator;
         end
-    end
-    
-    %% Helper Methods
-    methods (Access = protected)
-        %% (Re-)Initialize
+        
+        %% (Re-)Initialize the Filter
         function initialize(self)
             if ~isempty(self.model)
                 self.m = self.model.m0;

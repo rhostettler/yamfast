@@ -27,7 +27,7 @@ classdef MixedRBGF < GaussianFilter
     %   Implements the update-methods as required by GaussianFilter.
     %
     % REFERENCES
-    %   [1] R. Hostettler and S. S??rkk??, "Rao-Blackwellized Gaussian
+    %   [1] R. Hostettler and S. Särkkä, "Rao-Blackwellized Gaussian
     %       Filtering and Smoothing", 2017.
     %
     % SEE ALSO
@@ -108,6 +108,7 @@ classdef MixedRBGF < GaussianFilter
             P_p = zeros(Nx, Nx);
             A = zeros(Nx, Nxl);
             Q = zeros(Nx, Nx);
+            C = zeros(Nx, Nx);
             for j = 1:J
                 A(in, :) = model.An(Xn(:, j), t, u);
                 A(il, :) = model.Al(Xn(:, j), t, u);
@@ -121,11 +122,17 @@ classdef MixedRBGF < GaussianFilter
                 P_p = P_p + wc(j)*( ...
                     (X_p(:, j) - m_p)*(X_p(:, j) - m_p)' + A*Pl_tilde*A' + Q ...
                 );
-            end            
+                C(in, :) = C(in, :) + wc(j)*( ...
+                    (Xn(:, j) - mn)*(X_p(:, j) - m_p)' ...
+                );
+                C(il, :) = C(il, :) + wc(j)*A';
+            end
+            C(il, :) = Pnl'/Pn*C(in, :) + Pl_tilde*C(il, :);
             
             % Store
             self.m_p = m_p;
             self.P_p = (P_p+P_p')/2;
+            self.C = C;
         end
         
         %% Measurement Update
@@ -133,17 +140,20 @@ classdef MixedRBGF < GaussianFilter
             m_i = self.m_p;
             P_i = self.P_p;
             for i = 1:self.Ni
-                [m_i, P_i] = self.measurementUpdateIteration(y, t, u, m_i, P_i);
+                [m_i, P_i, y_p_i, S_i, D_i] = self.measurementUpdateIteration(y, t, u, m_i, P_i);
             end
             self.m = m_i;
             self.P = P_i;
+            self.y_p = y_p_i;
+            self.S = S_i;
+            self.D = D_i;
         end
     end
     
     %% Internal Methods
     methods (Access = protected)
         %% Single Measurement Update Iteration
-        function [m, P] = measurementUpdateIteration(self, y, t, u, m_p, P_p)
+        function [m, P, y_p, S, D] = measurementUpdateIteration(self, y, t, u, m_p, P_p)
             model = self.model;
             in = model.in;
             il = model.il;

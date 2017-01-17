@@ -99,14 +99,18 @@ classdef GenericGF < GaussianFilter
             % Predict the mean & covariance
             m_p = X_p*wm';
             P_p = zeros(Nx);
+            C = zeros(Nx, Nx);
             for l = 1:L
                 P_p = P_p + wc(l)*(X_p(:, l)-m_p)*(X_p(:, l)-m_p)';
+                C = C + wc(l)*(X_a(1:Nx, l) - self.m)*(X_p(:, l) - m_p)';
             end
             P_p = (P_p + P_p')/2;
 %             self.P_p = self.stabilize(P_p);
 
+            % Store
             self.m_p = m_p;
             self.P_p = P_p;
+            self.C = C;
         end
         
         %% Measurement update function
@@ -131,28 +135,30 @@ classdef GenericGF < GaussianFilter
 
                 % Predict the measurement and covariance
                 y_p = Y_p*Wm';
-                Pyy = zeros(Ny);
-                Pxy = zeros(Nx, Ny);
+                S = zeros(Ny);
+                D = zeros(Nx, Ny);
                 for l = 1:L
-                    Pyy = Pyy + Wc(l)*(Y_p(:, l) - y_p)*(Y_p(:, l) - y_p)';
-                    Pxy = Pxy ...
+                    S = S + Wc(l)*(Y_p(:, l) - y_p)*(Y_p(:, l) - y_p)';
+                    D = D ...
                         + Wc(l)*(X_p(1:Nx, l) - self.m_p)*(Y_p(:, l) - y_p)';
                 end
 
                 % Ensure Pyy is Hermitian
-                Pyy = (Pyy+Pyy')/2;
+                S = (S+S')/2;
 
                 % Correction
-                K = Pxy/Pyy;
+                K = D/S;
                 m = self.m_p + K*(y-y_p);
-                P = self.P_p - K*Pyy*K';
+                P = self.P_p - K*S*K';
                 P = (P + P')/2;
                 %P = self.stabilize(P);
 
+                % Store
                 self.m = m;
                 self.P = P;
-                self.Pyy = Pyy;
-                self.v = y-y_p;
+                self.S = S;
+                self.D = D;
+                self.y_p = y_p;
         end
     end
 
