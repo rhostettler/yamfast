@@ -27,7 +27,7 @@ classdef MixedRBGF < GaussianFilter
     %   Implements the update-methods as required by GaussianFilter.
     %
     % REFERENCES
-    %   [1] R. Hostettler and S. Särkkä, "Rao-Blackwellized Gaussian
+    %   [1] R. Hostettler and S. S??rkk??, "Rao-Blackwellized Gaussian
     %       Filtering and Smoothing", 2017.
     %
     % SEE ALSO
@@ -95,37 +95,33 @@ classdef MixedRBGF < GaussianFilter
             Xl_tilde = ml*ones(1, J) + L*(Xn - mn*ones(1, J));
             
             % Propagate the sigma points
-            X = zeros(Nx, J);
             X_p = zeros(Nx, J);
+            f = zeros(Nx, J);
+            A = zeros(Nx, Nxl, J);
+            Q = zeros(Nx, Nx, J);
             for j = 1:J
-                X(in, j) = Xn(:, j);
-                X(il, j) = Xl_tilde(:, j);
-                X_p(:, j) = model.f(X(:, j), zeros(Nq, 1), t, u);
+                f(in, j) = model.fn(Xn(:, j), t, u);
+                f(il, j) = model.fl(Xn(:, j), t, u);
+                A(in, :, j) = model.An(Xn(:, j), t, u);
+                A(il, :, j) = model.Al(Xn(:, j), t, u);
+                Q(:, :, j) = model.Q(Xn(:, j), t, u);
+                X_p(:, j) = f(:, j) + A(:, :, j)*Xl_tilde(:, j);
             end
             
             % Calculate the mean and covariances
             m_p = X_p*wm(:);
             P_p = zeros(Nx, Nx);
-            A = zeros(Nx, Nxl);
-            Q = zeros(Nx, Nx);
             C = zeros(Nx, Nx);
             for j = 1:J
-                A(in, :) = model.An(Xn(:, j), t, u);
-                A(il, :) = model.Al(Xn(:, j), t, u);
-                Qn = model.Qn(Xn(:, j), t, u);
-                Ql = model.Ql(Xn(:, j), t, u);
-                Qnl = model.Qnl(Xn(:, j), t, u);
-                Q(in, in) = Qn;
-                Q(in, il) = Qnl;
-                Q(il, in) = Qnl';
-                Q(il, il) = Ql;
+                Am = A(:, :, j);
+                Qm = Q(:, :, j);
                 P_p = P_p + wc(j)*( ...
-                    (X_p(:, j) - m_p)*(X_p(:, j) - m_p)' + A*Pl_tilde*A' + Q ...
+                    (X_p(:, j) - m_p)*(X_p(:, j) - m_p)' + Am*Pl_tilde*Am' + Qm ...
                 );
                 C(in, :) = C(in, :) + wc(j)*( ...
                     (Xn(:, j) - mn)*(X_p(:, j) - m_p)' ...
                 );
-                C(il, :) = C(il, :) + wc(j)*A';
+                C(il, :) = C(il, :) + wc(j)*Am';
             end
             C(il, :) = Pnl'/Pn*C(in, :) + Pl_tilde*C(il, :);
             
@@ -153,6 +149,7 @@ classdef MixedRBGF < GaussianFilter
     %% Internal Methods
     methods (Access = protected)
         %% Single Measurement Update Iteration
+        % TODO: Same split of function evaluation as in time update
         function [m, P, y_p, S, D] = measurementUpdateIteration(self, y, t, u, m_p, P_p)
             model = self.model;
             in = model.in;
@@ -178,12 +175,17 @@ classdef MixedRBGF < GaussianFilter
             Pl_tilde_p = Pl_p - L*Pn_p*L';
             
             % Propagate the sigma-points
-            X = zeros(Nx, J);
             Y_p = zeros(Ny, J);
+            h = zeros(Ny, J);
+            H = zeros(Ny, Nxl, J);
+            R = zeros(Ny, Ny, J);
             for j = 1:J
-                X(in, j) = Xn_p(:, j);
-                X(il, j) = Xl_tilde_p(:, j);
-                Y_p(:, j) = model.g(X(:, j), zeros(Nr, 1), t, u);
+                h(:, j) = model.h(Xn_p(:, j), t, u);
+                H(:, :, j) = model.C(Xn_p(:, j), t, u);
+                R(:, :, j) = model.R(Xn_p(:, j), t, u);
+                Y_p(:, j) = h(:, j) + H(:, :, j)*Xl_tilde_p(:, j);
+                
+                %Y_p(:, j) = model.g(X(:, j), zeros(Nr, 1), t, u);
             end
             
             % Calculate the predicted output and covariances
@@ -193,11 +195,11 @@ classdef MixedRBGF < GaussianFilter
             S = zeros(Ny, Ny);
             for j = 1:J
                 Dn = Dn + wc(j)*((Xn_p(:, j) - mn_p)*(Y_p(:, j) - y_p)');
-                Dl = Dl + wc(j)*model.C(Xn_p(:, j), t, u)';
+                Dl = Dl + wc(j)*H(:, :, j)';
                 S = S + wc(j)*( ...
                     (Y_p(:, j) - y_p)*(Y_p(:, j) - y_p)' ...
-                    + model.C(Xn_p(:, j), t, u)*Pl_tilde_p*model.C(Xn_p(:, j), t, u)' ...
-                    + model.R(Xn_p(:, j), t, u) ...
+                    + H(:, :, j)*Pl_tilde_p*H(:, :, j)' ...
+                    + R(:, :, j) ...
                 );
             end
             Dl = Pl_tilde_p*Dl + L*Dn;

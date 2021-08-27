@@ -48,7 +48,7 @@ classdef ExtendedKF < GaussianFilter
     %% Methods
     methods (Access = public)
         %% Constructor
-        function self = GenericEKF(model)
+        function self = ExtendedKF(model)
             if nargin >= 1
                 self.model = model;
                 self.initialize();
@@ -95,8 +95,8 @@ classdef ExtendedKF < GaussianFilter
             % Store
             self.m = m;
             self.P = P;
-            self.v = v;
-            self.Pyy = S;
+            self.y_p = y_p;
+            self.S = S;
         end
     end
 end

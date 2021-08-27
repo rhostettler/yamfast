@@ -18,11 +18,8 @@ classdef WienerSSModel < GenericModel
     %   subclassing (see below).
     %
     % PROPERTIES
-    %   mu0
-    %       The mean of the initial state
-    %
-    %   Sigma0
-    %       Covariance of the initial state
+    %   m0, P0
+    %       The mean and covariance of the initial state
     %
     % METHODS
     %   WienerSSModel()
@@ -69,14 +66,15 @@ classdef WienerSSModel < GenericModel
     
     %% Properties
     properties (Access = public)
-        mu0;
-        Sigma0;
+        m0;
+        P0;
     end
     
     %% 
     properties (Access = protected)
         m_F;
         m_Q;
+        m_R;
     end
 
     %% 
@@ -94,8 +92,8 @@ classdef WienerSSModel < GenericModel
                 self.m_Q = varargin{2};
                 self.m_g = varargin{3};
                 self.m_py_eval = varargin{4};
-                self.mu0 = varargin{5};
-                self.Sigma0 = varargin{6};
+                self.m0 = varargin{5};
+                self.P0 = varargin{6};
             elseif nargin ~= 0
                 error('Model initialization failed, check the parameters.');
             end
@@ -113,7 +111,7 @@ classdef WienerSSModel < GenericModel
 %             B = self.m_B;
 %         end
                 
-        function Q = Q(self, t, u)
+        function Q = Q(self, x, t, u)
             Q = self.m_Q;
         end
         
@@ -123,6 +121,10 @@ classdef WienerSSModel < GenericModel
         
         function py = py_eval(self, y, x, t, u)
             py = self.m_py_eval(y, x, t, u);
+        end
+        
+        function R = R(self, x, t, u)
+            R = self.m_R;
         end
 
         %% Generic Wiener State-Space System Functions
@@ -144,6 +146,15 @@ classdef WienerSSModel < GenericModel
             Q = self.Q(t, u);
             q = chol(Q).'*randn(size(Q, 1), size(x, 2));
             xp = self.f(x, q, t, u);
+        end
+        
+        function px = px_eval(self, xp, x, t, u)
+            Q = self.Q(t, u);
+            px = mvnpdf( ...
+                xp.', ...
+                (self.f(x, zeros(size(Q, 1), size(x, 2)), t, u)).', ...
+                self.Q ...
+            ).';
         end
     end
 end

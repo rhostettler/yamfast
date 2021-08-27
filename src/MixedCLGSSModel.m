@@ -77,18 +77,18 @@ classdef MixedCLGSSModel < AWGNModel
     
     %% Private Properties
     % Only to be used in the 'simple' form
-    properties (Access = private)
+    properties (Access = protected)
         % Dynamics
         m_fn = @(xn, t, u) [];
         m_fl = @(xn, t, u) [];
         m_An = @(xn, t, u) [];
         m_Al = @(xn, t, u) [];
-        m_Q = @(xn, t, u) [];
+        %m_Q = @(xn, t, u) [];
         
         % Observation
         m_h = @(xn, t, u) [];
         m_C = @(xn, t, u) [];
-        m_R = @(xn, t, u) [];
+        %m_R = @(xn, t, u) [];
     end
 
     %% General Methods
@@ -98,22 +98,22 @@ classdef MixedCLGSSModel < AWGNModel
         % Only to be used for 'simple' models
         function self = MixedCLGSSModel(varargin)
             % Input order is: fn, An, fl, Al, Q, h, C, R, m0, P0, in, il
-            if nargin < 12
+            if nargin == 12
+                self.m_fn = varargin{1};
+                self.m_An = varargin{2};
+                self.m_fl = varargin{3};
+                self.m_Al = varargin{4};
+                self.m_Q = varargin{5};
+                self.m_h = varargin{6};
+                self.m_C = varargin{7};
+                self.m_R = varargin{8};
+                self.m0 = varargin{9};
+                self.P0 = varargin{10};
+                self.in = varargin{11};
+                self.il = varargin{12};
+            elseif nargin ~= 0
                 error('Model not fully specified.');
             end
-            
-            self.m_fn = varargin{1};
-            self.m_An = varargin{2};
-            self.m_fl = varargin{3};
-            self.m_Al = varargin{4};
-            self.m_Q = varargin{5};
-            self.m_h = varargin{6};
-            self.m_C = varargin{7};
-            self.m_R = varargin{8};
-            self.m0 = varargin{9};
-            self.P0 = varargin{10};
-            self.in = varargin{11};
-            self.il = varargin{12};
         end
 
         %% Process Dynamics

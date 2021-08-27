@@ -68,7 +68,7 @@ classdef AWGNModel < GenericModel
     end
 
     %% Protected Properties
-    properties (Access = private)
+    properties (Access = protected)
         m_f;
         m_Fx;
         m_Q;
@@ -143,7 +143,7 @@ classdef AWGNModel < GenericModel
                 Gx = [];
             end
             Gr = eye(size(r, 1));
-            y = self.g(x, t, u) + r;
+            y = self.m_g(x, t, u) + r;
         end
         
         %% Default Measurement Noise Covariance

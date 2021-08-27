@@ -48,7 +48,7 @@ classdef RBFFBSi < handle
     
     %% Private Properties
     properties (Access = private)
-        M;
+        Mf;
         Ms;
         filter;
         model;
@@ -69,7 +69,7 @@ classdef RBFFBSi < handle
     %% Public Methods
     methods (Access = public)
         %% Constructor
-        function self = RBFFBSi(model, M, Ms, type)
+        function self = RBFFBSi(model, Mf, Ms, type)
             % TODO: Make generic
             % TODO: We might want to remove the type later on and determine
             % the type based on the model. (And implement of course).
@@ -77,12 +77,12 @@ classdef RBFFBSi < handle
                 case 'hierarchical'
                     error('Filter not implemented yet, sorry.');
                 case 'mixed'
-                    self.filter = MixedRBPF(model, M);
+                    self.filter = MixedRBPF(model, Mf);
                 otherwise
                     error('Unknown model type');
             end
             self.type = type;
-            self.M = M;
+            self.Mf = Mf;
             self.Ms = Ms;
             self.model = model;
         end
@@ -90,17 +90,17 @@ classdef RBFFBSi < handle
         %% Smoothing Function
         function xhat_s = smooth(self, y, t, u)
             %% Preallocate
-            M = self.M;
+            Mf = self.Mf;
             Ms = self.Ms;
             Ns = size(self.filter.s, 1);
             Nz = size(self.filter.z, 1);
             N = size(y, 2);
             
             % These store the filtered particles
-            self.s = zeros(Ns, M, N);
-            self.w = zeros(1, M, N);
-            self.z = zeros(Nz, M, N);
-            self.P = zeros(Nz, Nz, M, N);
+            self.s = zeros(Ns, Mf, N);
+            self.w = zeros(1, Mf, N);
+            self.z = zeros(Nz, Mf, N);
+            self.P = zeros(Nz, Nz, Mf, N);
             
             % These store the smoothed particles
             self.ss = zeros(Ns, Ms, N);
@@ -132,11 +132,14 @@ classdef RBFFBSi < handle
             %       extending from n+1 to n, thus, the time should possibly
             %       be t(n+1). Also, we should set the model time to t(n).
             %       It should be similar for u(n).
+            % TODO: Then there is a bug here actually, because actually
+            % depends on t(n)... Meh.
             self.initializeBackwardIteration(y(:, N), t(N), u(:, N));
             for n = N-1:-1:1
-                self.backwardIteration(y(:, n), t(n), u(:, N), n);
+                self.model.t = t(n);
+                self.backwardIteration(y(:, n), t(n+1), u(:, n+1), n);
             end
-            self.resampleInitialParticles();
+            self.resampleInitialParticles(t(1), u(1));
             self.smoothLinearStates(y, t, u);
             
             %% Point Estimate
@@ -166,7 +169,7 @@ classdef RBFFBSi < handle
             Omega_hat = zeros(Nz, Nz, Ms);
 
             ri = resample(self.w(:, :, end));
-            s = self.s(:, ri, end);
+            s = self.s(:, ri(randi(self.Mf, [1, Ms])), end);
             for m = 1:self.Ms
                 h = self.model.h(s(:, m), t, u);
                 C = self.model.C(s(:, m), t, u);
@@ -193,7 +196,7 @@ classdef RBFFBSi < handle
             
             for m = 1:Ms
                 % 3a)-3c): Backward prediction
-                [wtilde, Omega, lambda] = self.calculateBackwardWeights(ss(:, m), s, w, z, P, t, u);
+                [wtilde, Omega, lambda] = self.calculateBackwardWeights(ss(:, m), self.lambda_hat(:, m), self.Omega_hat(:, :, m), s, w, z, P, t, u);
                 
                 % 3d)-3f): Extend the state trajectory
                 ri = resample(wtilde);
@@ -227,18 +230,18 @@ classdef RBFFBSi < handle
         %% Resamples the Initial Particles
         % Used to initializing smoothing of the linear states in the mixed
         % model
-        function resampleInitialParticles(self)
+        function resampleInitialParticles(self, t, u)
             model = self.model;
-            M = self.M;
+            Mf = self.Mf;
             Ms = self.Ms;
             s0 = self.s0;
-            w0 = 1/M*ones(1, M);
-            z0 = model.m0(model.il)*ones(1, M);
-            P0 = repmat(model.P0(model.il, model.il), [1, 1, M]);
+            w0 = 1/Mf*ones(1, Mf);
+            z0 = model.m0(model.il)*ones(1, Mf);
+            P0 = repmat(model.P0(model.il, model.il), [1, 1, Mf]);
             
             for m = 1:Ms
                 % 3a)-3c): Backward prediction
-                wtilde = self.calculateBackwardWeights(self.ss(:, m, 1), s0, w0, z0, P0, [], []);
+                wtilde = self.calculateBackwardWeights(self.ss(:, m, 1), self.lambda_hat(:, m), self.Omega_hat(:, :, m), s0, w0, z0, P0, t(1), u(1));
                 
                 % 3d)-3f): Extend the state trajectory
                 ri = resample(wtilde);
@@ -262,24 +265,20 @@ classdef RBFFBSi < handle
         %       Sufficient statistcs
         %   
         % TODO: Maybe we should use the log-weights as the input.
-        function [W, Omega, lambda] = calculateBackwardWeights(self, s_p, s, w, z, P, t, u)
+        function [W, Omega, lambda] = calculateBackwardWeights(self, s_p, lambda_hat, Omega_hat, s, w, z, P, t, u)
             %% Preliminaries
-            [Ns, M] = size(s);
+            [Ns, Mf] = size(s);
             Nz = size(z, 1);
-                        
             Is = eye(Ns);
             Iz = eye(Nz);
             Ix = eye(Ns+Nz);
-            
             model = self.model;
-            Omega_hat = self.Omega_hat;
-            lambda_hat = self.lambda_hat;
             
             %% Calculations
-            Omega = zeros(Nz, Nz, M);
-            lambda = zeros(Nz, M);
-            W = zeros(1, M);            
-            for m = 1:M
+            Omega = zeros(Nz, Nz, Mf);
+            lambda = zeros(Nz, Mf);
+            W = zeros(1, Mf);            
+            for m = 1:Mf
                 % 3a)
                 if strcmp(self.type, 'hierarchical')                       % TODO: This selector should be modified somehow
                     % TODO: there are possibly still bugs in this branch,
@@ -300,12 +299,12 @@ classdef RBFFBSi < handle
                     
                     % Note: These are striclty M[n+1] and m[n+1] but for
                     % convenience we call them Mt and mt anyway
-                    Mt = F'*Omega_hat(:, :, m)*F + Is;
-                    mt = lambda_hat(:, m) - Omega_hat(:, :, m)*f;
+                    Mt = F'*Omega_hat*F + Is;
+                    mt = lambda_hat - Omega_hat*f;
                     
                     % Actual calculation of the backward statistics
-                    K = A'*(Iz - Omega_hat(:, :, m)*F/Mt*F');
-                    Omega(:, :, m) = K*Omega_hat(:, :, m)*A;
+                    K = A'*(Iz - Omega_hat*F/Mt*F');
+                    Omega(:, :, m) = K*Omega_hat*A;
                     lambda(:, m) = K*mt;
                 elseif strcmp(self.type, 'mixed')
                     %% Mixed model
@@ -328,19 +327,19 @@ classdef RBFFBSi < handle
                     Abar = A - F*G'/Q*B;
                     
                     % Actual calculation of the backward statistics
-                    mt = lambda_hat(:, m) - Omega_hat(:, :, m)*fbar;
-                    Mt = Qbar*F'*Omega_hat(:, :, m)*F*Qbar + Ix;
+                    mt = lambda_hat - Omega_hat*fbar;
+                    Mt = Qbar*F'*Omega_hat*F*Qbar + Ix;
                     Psi = Qbar/Mt*Qbar;
                     tau = ( ...
                         wnorm(s_p-g, Q\Is) ...
-                        + fbar'*Omega_hat(:, :, m)*fbar ...
-                        - 2*lambda_hat(:, m)'*fbar ...
+                        + fbar'*Omega_hat*fbar ...
+                        - 2*lambda_hat'*fbar ...
                         - (F'*mt)'*Psi*(F'*mt) ...
                     );
                     
                     logZ = -1/2*(log(det(Q)) + log(det(Mt)) + tau);
-                    K = Abar'*(Iz - Omega_hat(:, :, m)*F*Psi*F');
-                    Omega(:, :, m) = K*Omega_hat(:, :, m)*Abar + B'/Q*B;
+                    K = Abar'*(Iz - Omega_hat*F*Psi*F');
+                    Omega(:, :, m) = K*Omega_hat*Abar + B'/Q*B;
                     lambda(:, m) = K*mt + B'/Q*(s_p-g);
                 else
                     error('Unknown model type.');

@@ -159,5 +159,20 @@ classdef MixedRBPF < handle
             self.z = z;
             self.P = P;
         end
+        
+        %% Filter a Batch of Data
+        function xhat_f = filter(self, y, t, u)
+            N = size(y, 2);
+            if nargin < 4
+                u = zeros(1, N);
+            end
+            
+            Nx = size(self.s, 1) + size(self.z, 1);
+            xhat_f = zeros(Nx, N);
+            for n = 1:N
+                xhat_f(:, n) = self.update(y(:, n), t(n), u(n));
+                self.model.t = t(n);
+            end
+        end
     end
 end

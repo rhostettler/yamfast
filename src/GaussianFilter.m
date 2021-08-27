@@ -61,7 +61,7 @@ classdef (Abstract) GaussianFilter < handle
     %       (Re-)initializes the filter.
     %
     % REFERENCES
-    %   [1] S. Särkkä, "Bayesian Filtering and Smoothing", Cambridge
+    %   [1] S. S??rkk??, "Bayesian Filtering and Smoothing", Cambridge
     %       University Press, 2013.
     %
     % SEE ALSO
@@ -112,15 +112,46 @@ classdef (Abstract) GaussianFilter < handle
         %% Update the filter
         function [m, P] = update(self, y, t, u)
             self.timeUpdate(t, u);
+            self.timeUpdateHook();
+            self.measurementUpdate(y, t, u);
+            self.measurementUpdateHook();
+            m = self.m;
+            P = self.P;
+        end
+        
+        %% Run Update Hooks
+        function timeUpdateHook(self)
             for i = 1:length(self.decorators)
                 self.decorators{i}.timeUpdateHook(self);
             end
-            self.measurementUpdate(y, t, u);
+        end
+        
+        function measurementUpdateHook(self)
             for i = 1:length(self.decorators)
                 self.decorators{i}.measurementUpdateHook(self);
             end
-            m = self.m;
-            P = self.P;
+        end
+        
+        %% Filter a Batch of Data
+        function [m, P] = filter(self, y, t, u)
+            N = size(y, 2);
+            if nargin < 4
+                u = zeros(1, N);
+            end
+            
+            model = self.model;
+            Nx = size(model.m0, 1);
+            m = zeros(Nx, N);
+            P = zeros(Nx, Nx, N);
+            
+            for n = 1:N
+                self.update(y(:, n), t(n), u(n));
+                m(:, n) = self.m;
+                P(:, :, n) = self.P;
+                model.t = t(n);
+            end            
+%             self.m = m;
+%             self.P = P;
         end
         
         %% Adds a Decorators
